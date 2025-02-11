@@ -2,6 +2,8 @@ use std::{env, process, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
+use dotenv::dotenv;
+
 const DFLT_BROKER: &str = "ssl://your-aws-endpoint.amazonaws.com:8883";
 const DFLT_CLIENT: &str = "rust_publish";
 const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
@@ -9,11 +11,22 @@ const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
 const QOS: i32 = 1;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let host = env::args()
-        .nth(1)
-        .unwrap_or_else(|| DFLT_BROKER.to_string());
+    dotenv().ok();
+
+    let host = env::var("BROKER").unwrap_or_else(|_| DFLT_BROKER.to_string());
+    let trust_store =
+        env::var("TRUST_STORE").unwrap_or_else(|_| "path/to/AmazonRootCA1.pem".to_string());
+    let key_store =
+        env::var("KEY_STORE").unwrap_or_else(|_| "path/to/your-private.pem.key".to_string());
+    let private_key =
+        env::var("PRIVATE_KEY").unwrap_or_else(|_| "path/to/your-certificate.pem.crt".to_string());
+    let client_id = env::var("CLIENT_ID").unwrap_or_else(|_| DFLT_CLIENT.to_string());
 
     println!("host: {}", host);
+    println!("trust_store: {}", trust_store);
+    println!("key_store: {}", key_store);
+    println!("private_key: {}", private_key);
+    println!("client_id: {}", client_id);
 
     // Define the set of options for the create.
     // Use an ID for a persistent session.

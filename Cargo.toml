@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 paho-mqtt = { git = "https://github.com/eclipse/paho.mqtt.rust.git", branch = "master" }
+dotenv = "0.15"
 
 [[bin]]
 name = "sub"
