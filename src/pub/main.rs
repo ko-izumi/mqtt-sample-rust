@@ -1,63 +1,79 @@
-use std::{env, process, time::Duration};
+use std::{env, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
-const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
-const DFLT_CLIENT: &str = "rust_publish";
-const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
+use anyhow::Result;
+use dotenv::dotenv;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Payload {
+    message: String,
+    number: i32,
+}
+
 // Define the qos.
 const QOS: i32 = 1;
+const TOPIC: &str = "common/topic";
 
-fn main() {
-    let host = env::args()
-        .nth(1)
-        .unwrap_or_else(|| DFLT_BROKER.to_string());
+fn main() -> Result<()> {
+    dotenv().ok();
+    let endpoint = env::var("ENDPOINT")?;
+    let client_id = "client_id_2"; // should be unique
+
+    let trust_store = env::var("TRUST_STORE")?;
+    let key_store = env::var("KEY_STORE")?;
+    let private_key = env::var("PRIVATE_KEY")?;
+
     // Define the set of options for the create.
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri(host)
-        .client_id(DFLT_CLIENT.to_string())
+        .server_uri(endpoint)
+        .client_id(client_id)
         .finalize();
 
     // Create a client.
-    let cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
-        println!("Error creating the client: {:?}", err);
-        process::exit(1);
-    });
+    let cli = mqtt::Client::new(create_opts)?;
+
+    let ssl_opts = mqtt::SslOptionsBuilder::new()
+        .trust_store(trust_store)?
+        .key_store(key_store)?
+        .private_key(private_key)?
+        .finalize();
 
     // Define the set of options for the connection.
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(20))
+        .ssl_options(ssl_opts)
         .clean_session(true)
         .finalize();
 
+    println!("connecting to the broker");
+
     // Connect and wait for it to complete or fail.
-    if let Err(e) = cli.connect(conn_opts) {
-        println!("Unable to connect:\n\t{:?}", e);
-        process::exit(1);
-    }
+    cli.connect(conn_opts)?;
+
+    println!("connected to the broker");
 
     // Create a message and publish it.
     // Publish message to 'test' and 'hello' topics.
     for num in 0..5 {
-        let content = "Hello world! ".to_string() + &num.to_string();
-        let mut msg = mqtt::Message::new(DFLT_TOPICS[0], content.clone(), QOS);
-        if num % 2 == 0 {
-            println!("Publishing messages on the {:?} topic", DFLT_TOPICS[1]);
-            msg = mqtt::Message::new(DFLT_TOPICS[1], content.clone(), QOS);
-        } else {
-            println!("Publishing messages on the {:?} topic", DFLT_TOPICS[0]);
-        }
-        let tok = cli.publish(msg);
+        let payload = Payload {
+            message: "Hello world!".to_string(),
+            number: num,
+        };
 
-        if let Err(e) = tok {
-            println!("Error sending message: {:?}", e);
-            break;
-        }
+        let payload_json = serde_json::to_string(&payload)?;
+
+        let msg = mqtt::Message::new(TOPIC, payload_json, QOS);
+
+        cli.publish(msg.clone())?;
+        println!("published message: {:?}", msg.to_string());
     }
 
     // Disconnect from the broker.
-    let tok = cli.disconnect(None);
+    cli.disconnect(None)?;
     println!("Disconnect from the broker");
-    tok.unwrap();
+
+    Ok(())
 }
