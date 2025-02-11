@@ -1,29 +1,28 @@
-use std::{env, process, time::Duration};
+use std::{env, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
-const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
-const DFLT_CLIENT: &str = "rust_publish";
+use anyhow::Result;
+use dotenv::dotenv;
+
 const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
 // Define the qos.
 const QOS: i32 = 1;
 
-fn main() {
-    let host = env::args()
-        .nth(1)
-        .unwrap_or_else(|| DFLT_BROKER.to_string());
+fn main() -> Result<()> {
+    dotenv().ok();
+    let host = env::var("BROKER")?;
+    let client_id = env::var("CLIENT_ID")?;
+
     // Define the set of options for the create.
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
         .server_uri(host)
-        .client_id(DFLT_CLIENT.to_string())
+        .client_id(client_id)
         .finalize();
 
     // Create a client.
-    let cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
-        println!("Error creating the client: {:?}", err);
-        process::exit(1);
-    });
+    let cli = mqtt::Client::new(create_opts)?;
 
     // Define the set of options for the connection.
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
@@ -32,10 +31,7 @@ fn main() {
         .finalize();
 
     // Connect and wait for it to complete or fail.
-    if let Err(e) = cli.connect(conn_opts) {
-        println!("Unable to connect:\n\t{:?}", e);
-        process::exit(1);
-    }
+    cli.connect(conn_opts)?;
 
     // Create a message and publish it.
     // Publish message to 'test' and 'hello' topics.
@@ -57,7 +53,8 @@ fn main() {
     }
 
     // Disconnect from the broker.
-    let tok = cli.disconnect(None);
+    cli.disconnect(None)?;
     println!("Disconnect from the broker");
-    tok.unwrap();
+
+    Ok(())
 }
