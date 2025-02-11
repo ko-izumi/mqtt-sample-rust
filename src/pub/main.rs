@@ -44,12 +44,7 @@ fn main() -> Result<()> {
         } else {
             println!("Publishing messages on the {:?} topic", DFLT_TOPICS[0]);
         }
-        let tok = cli.publish(msg);
-
-        if let Err(e) = tok {
-            println!("Error sending message: {:?}", e);
-            break;
-        }
+        cli.publish(msg)?;
     }
 
     // Disconnect from the broker.
