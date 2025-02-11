@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::{env, process, thread, time::Duration};
+use std::{env, fs, process, thread, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
@@ -33,6 +33,10 @@ fn subscribe_topics(cli: &mqtt::Client) {
     }
 }
 
+fn check_file_exists(path: &str) -> bool {
+    fs::metadata(path).is_ok()
+}
+
 fn main() -> Result<()> {
     dotenv().ok();
 
@@ -49,6 +53,24 @@ fn main() -> Result<()> {
     println!("key_store: {}", key_store);
     println!("private_key: {}", private_key);
     println!("client_id: {}", client_id);
+
+    if check_file_exists(&trust_store) {
+        println!("Trust store path is valid.");
+    } else {
+        println!("Trust store path is invalid.");
+    }
+
+    if check_file_exists(&key_store) {
+        println!("Key store path is valid.");
+    } else {
+        println!("Key store path is invalid.");
+    }
+
+    if check_file_exists(&private_key) {
+        println!("Private key path is valid.");
+    } else {
+        println!("Private key path is invalid.");
+    }
 
     // Define the set of options for the create.
     // Define the set of options for the create.

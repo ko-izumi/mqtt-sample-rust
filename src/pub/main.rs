@@ -35,11 +35,15 @@ fn main() -> Result<()> {
         .client_id(DFLT_CLIENT.to_string())
         .finalize();
 
+    println!("Client creating");
+
     // Create a client.
     let cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
         println!("Error creating the client: {:?}", err);
         process::exit(1);
     });
+
+    println!("Client created");
 
     // Define the set of options for the connection.
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
@@ -54,11 +58,15 @@ fn main() -> Result<()> {
         )
         .finalize();
 
+    println!("Connecting...");
+
     // Connect and wait for it to complete or fail.
     if let Err(e) = cli.connect(conn_opts) {
         println!("Unable to connect:\n\t{:?}", e);
         process::exit(1);
     }
+
+    println!("Connected to the broker");
 
     // Create a message and publish it.
     // Publish message to 'test' and 'hello' topics.
