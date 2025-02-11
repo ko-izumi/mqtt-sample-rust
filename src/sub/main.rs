@@ -1,9 +1,9 @@
-use std::process;
 use std::{thread, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
 use anyhow::Result;
+use dotenv::dotenv;
 
 const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
 const DFLT_CLIENT: &str = "rust_subscribe";
@@ -25,15 +25,8 @@ fn try_reconnect(cli: &mqtt::Client) -> bool {
     false
 }
 
-// Subscribes to multiple topics.
-fn subscribe_topics(cli: &mqtt::Client) {
-    if let Err(e) = cli.subscribe_many(DFLT_TOPICS, DFLT_QOS) {
-        println!("Error subscribes topics: {:?}", e);
-        process::exit(1);
-    }
-}
-
 fn main() -> Result<()> {
+    dotenv().ok();
     let host = DFLT_BROKER.to_string();
 
     // Define the set of options for the create.
@@ -65,7 +58,7 @@ fn main() -> Result<()> {
     cli.connect(conn_opts)?;
 
     // Subscribe topics.
-    subscribe_topics(&cli);
+    cli.subscribe_many(DFLT_TOPICS, DFLT_QOS)?;
 
     println!("Processing requests...");
     for msg in rx.iter() {
@@ -74,7 +67,7 @@ fn main() -> Result<()> {
         } else if !cli.is_connected() {
             if try_reconnect(&cli) {
                 println!("Resubscribe topics...");
-                subscribe_topics(&cli);
+                cli.subscribe_many(DFLT_TOPICS, DFLT_QOS)?;
             } else {
                 break;
             }
