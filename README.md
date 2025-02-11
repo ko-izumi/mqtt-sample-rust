@@ -1,4 +1,4 @@
-# MQTT Client
+# MQTT Client for AWS IoT
 
 ## Environment Variables
 
