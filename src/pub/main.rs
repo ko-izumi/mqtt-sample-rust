@@ -4,6 +4,13 @@ extern crate paho_mqtt as mqtt;
 
 use anyhow::Result;
 use dotenv::dotenv;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Payload {
+    message: String,
+    number: i32,
+}
 
 // Define the qos.
 const QOS: i32 = 1;
@@ -50,8 +57,15 @@ fn main() -> Result<()> {
     // Create a message and publish it.
     // Publish message to 'test' and 'hello' topics.
     for num in 0..5 {
-        let content = "Hello world! ".to_string() + &num.to_string();
-        let msg = mqtt::Message::new(client_id.clone(), content.clone(), QOS);
+        let payload = Payload {
+            message: "Hello world!".to_string(),
+            number: num,
+        };
+
+        let payload_json = serde_json::to_string(&payload)?;
+
+        let msg = mqtt::Message::new(client_id.clone(), payload_json, QOS);
+
         cli.publish(msg.clone())?;
         println!("published message: {:?}", msg.to_string());
     }

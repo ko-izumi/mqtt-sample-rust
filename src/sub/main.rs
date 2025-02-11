@@ -1,13 +1,11 @@
-use std::{thread, time::Duration};
+use std::{env, thread, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
 use anyhow::Result;
 use dotenv::dotenv;
 
-const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
-const DFLT_CLIENT: &str = "rust_subscribe";
-const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
+const DFLT_TOPICS: &[&str] = &["rfid_sample", "rfid_sample_2"];
 // The qos list that match topics above.
 const DFLT_QOS: &[i32] = &[0, 1];
 
@@ -27,35 +25,51 @@ fn try_reconnect(cli: &mqtt::Client) -> bool {
 
 fn main() -> Result<()> {
     dotenv().ok();
-    let host = DFLT_BROKER.to_string();
+    let endpoint = env::var("ENDPOINT")?;
+    let client_id = env::var("CLIENT_ID")?;
+
+    let trust_store = env::var("TRUST_STORE")?;
+    let key_store = env::var("KEY_STORE")?;
+    let private_key = env::var("PRIVATE_KEY")?;
 
     // Define the set of options for the create.
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri(host)
-        .client_id(DFLT_CLIENT.to_string())
+        .server_uri(endpoint)
+        .client_id(client_id.clone())
         .finalize();
 
     // Create a client.
     let cli = mqtt::Client::new(create_opts)?;
+
+    let ssl_opts = mqtt::SslOptionsBuilder::new()
+        .trust_store(trust_store)?
+        .key_store(key_store)?
+        .private_key(private_key)?
+        .finalize();
 
     // Initialize the consumer before connecting.
     let rx = cli.start_consuming();
 
     // Define the set of options for the connection.
     let lwt = mqtt::MessageBuilder::new()
-        .topic("test")
+        .topic("rfid_sample")
         .payload("Consumer lost connection")
         .finalize();
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(20))
+        .ssl_options(ssl_opts)
         .clean_session(false)
         .will_message(lwt)
         .finalize();
 
+    println!("connecting to the broker");
+
     // Connect and wait for it to complete or fail.
     cli.connect(conn_opts)?;
+
+    println!("subscribing to the topics");
 
     // Subscribe topics.
     cli.subscribe_many(DFLT_TOPICS, DFLT_QOS)?;
