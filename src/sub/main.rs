@@ -5,10 +5,6 @@ extern crate paho_mqtt as mqtt;
 use anyhow::Result;
 use dotenv::dotenv;
 
-const DFLT_TOPICS: &[&str] = &["rfid_sample", "rfid_sample_2"];
-// The qos list that match topics above.
-const DFLT_QOS: &[i32] = &[0, 1];
-
 // Reconnect to the broker when connection is lost.
 fn try_reconnect(cli: &mqtt::Client) -> bool {
     println!("Connection lost. Waiting to retry connection");
@@ -53,7 +49,7 @@ fn main() -> Result<()> {
 
     // Define the set of options for the connection.
     let lwt = mqtt::MessageBuilder::new()
-        .topic("rfid_sample")
+        .topic("error")
         .payload("Consumer lost connection")
         .finalize();
 
@@ -72,7 +68,7 @@ fn main() -> Result<()> {
     println!("subscribing to the topics");
 
     // Subscribe topics.
-    cli.subscribe_many(DFLT_TOPICS, DFLT_QOS)?;
+    cli.subscribe(&client_id, 0)?;
 
     println!("Processing requests...");
     for msg in rx.iter() {
@@ -81,7 +77,7 @@ fn main() -> Result<()> {
         } else if !cli.is_connected() {
             if try_reconnect(&cli) {
                 println!("Resubscribe topics...");
-                cli.subscribe_many(DFLT_TOPICS, DFLT_QOS)?;
+                cli.subscribe(&client_id, 1)?;
             } else {
                 break;
             }
@@ -91,8 +87,8 @@ fn main() -> Result<()> {
     // If still connected, then disconnect now.
     if cli.is_connected() {
         println!("Disconnecting");
-        cli.unsubscribe_many(DFLT_TOPICS).unwrap();
-        cli.disconnect(None).unwrap();
+        cli.unsubscribe(&client_id)?;
+        cli.disconnect(None)?;
     }
     println!("Exiting");
 
