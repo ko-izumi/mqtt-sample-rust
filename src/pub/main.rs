@@ -2,16 +2,19 @@ use std::{env, process, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
-const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
+const DFLT_BROKER: &str = "ssl://your-aws-endpoint.amazonaws.com:8883";
 const DFLT_CLIENT: &str = "rust_publish";
 const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
 // Define the qos.
 const QOS: i32 = 1;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host = env::args()
         .nth(1)
         .unwrap_or_else(|| DFLT_BROKER.to_string());
+
+    println!("host: {}", host);
+
     // Define the set of options for the create.
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
@@ -29,6 +32,13 @@ fn main() {
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(20))
         .clean_session(true)
+        .ssl_options(
+            mqtt::SslOptionsBuilder::new()
+                .trust_store("path/to/AmazonRootCA1.pem")?
+                .key_store("path/to/your-private.pem.key")?
+                .private_key("path/to/your-certificate.pem.crt")?
+                .finalize(),
+        )
         .finalize();
 
     // Connect and wait for it to complete or fail.
@@ -60,4 +70,6 @@ fn main() {
     let tok = cli.disconnect(None);
     println!("Disconnect from the broker");
     tok.unwrap();
+
+    Ok(())
 }

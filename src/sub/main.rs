@@ -2,7 +2,7 @@ use std::{env, process, thread, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
-const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
+const DFLT_BROKER: &str = "ssl://your-aws-endpoint.amazonaws.com:8883";
 const DFLT_CLIENT: &str = "rust_subscribe";
 const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
 // The qos list that match topics above.
@@ -30,7 +30,7 @@ fn subscribe_topics(cli: &mqtt::Client) {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host = env::args()
         .nth(1)
         .unwrap_or_else(|| DFLT_BROKER.to_string());
@@ -43,10 +43,7 @@ fn main() {
         .finalize();
 
     // Create a client.
-    let cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
-        println!("Error creating the client: {:?}", err);
-        process::exit(1);
-    });
+    let cli = mqtt::Client::new(create_opts)?;
 
     // Initialize the consumer before connecting.
     let rx = cli.start_consuming();
@@ -61,6 +58,13 @@ fn main() {
         .keep_alive_interval(Duration::from_secs(20))
         .clean_session(false)
         .will_message(lwt)
+        .ssl_options(
+            mqtt::SslOptionsBuilder::new()
+                .trust_store("path/to/AmazonRootCA1.pem")?
+                .key_store("path/to/your-private.pem.key")?
+                .private_key("path/to/your-certificate.pem.crt")?
+                .finalize(),
+        )
         .finalize();
 
     // Connect and wait for it to complete or fail.
@@ -89,8 +93,9 @@ fn main() {
     // If still connected, then disconnect now.
     if cli.is_connected() {
         println!("Disconnecting");
-        cli.unsubscribe_many(DFLT_TOPICS).unwrap();
-        cli.disconnect(None).unwrap();
+        cli.unsubscribe_many(DFLT_TOPICS)?;
+        cli.disconnect(None)?;
     }
     println!("Exiting");
+    Ok(())
 }
