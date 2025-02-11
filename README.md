@@ -1,5 +1,27 @@
 # MQTT Client
 
+## Environment Variables
+
+- `ENDPOINT`: MQTT broker endpoint
+- `TRUST_STORE`: Path to the trust store
+- `KEY_STORE`: Path to the key store
+- `PRIVATE_KEY`: Path to the private key
+
+example:
+
+```bash
+ENDPOINT=ssl://xxxxxx-ats.iot.xxxxxx.amazonaws.com:8883
+TRUST_STORE=assets/AmazonRootCA1.pem
+KEY_STORE=assets/xxxxxxxxxxxx-certificate.pem.crt
+PRIVATE_KEY=assets/xxxxxxxxxxxx-private.pem.key
+```
+
+## Build
+
+```bash
+cargo build
+```
+
 ## Publish
 
 ```bash
