@@ -1,12 +1,12 @@
-use std::{env, process, thread, time::Duration};
+use std::{env, thread, time::Duration};
 
 extern crate paho_mqtt as mqtt;
 
-const DFLT_BROKER: &str = "tcp://broker.emqx.io:1883";
-const DFLT_CLIENT: &str = "rust_subscribe";
-const DFLT_TOPICS: &[&str] = &["rust/mqtt", "rust/test"];
-// The qos list that match topics above.
-const DFLT_QOS: &[i32] = &[0, 1];
+use anyhow::Result;
+use dotenv::dotenv;
+
+const QOS: i32 = 1;
+const TOPIC: &str = "common/topic";
 
 // Reconnect to the broker when connection is lost.
 fn try_reconnect(cli: &mqtt::Client) -> bool {
@@ -22,55 +22,56 @@ fn try_reconnect(cli: &mqtt::Client) -> bool {
     false
 }
 
-// Subscribes to multiple topics.
-fn subscribe_topics(cli: &mqtt::Client) {
-    if let Err(e) = cli.subscribe_many(DFLT_TOPICS, DFLT_QOS) {
-        println!("Error subscribes topics: {:?}", e);
-        process::exit(1);
-    }
-}
+fn main() -> Result<()> {
+    dotenv().ok();
+    let endpoint = env::var("ENDPOINT")?;
+    let client_id = "client_id_1"; // should be unique
 
-fn main() {
-    let host = env::args()
-        .nth(1)
-        .unwrap_or_else(|| DFLT_BROKER.to_string());
+    let trust_store = env::var("TRUST_STORE")?;
+    let key_store = env::var("KEY_STORE")?;
+    let private_key = env::var("PRIVATE_KEY")?;
 
     // Define the set of options for the create.
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri(host)
-        .client_id(DFLT_CLIENT.to_string())
+        .server_uri(endpoint)
+        .client_id(client_id)
         .finalize();
 
     // Create a client.
-    let cli = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
-        println!("Error creating the client: {:?}", err);
-        process::exit(1);
-    });
+    let cli = mqtt::Client::new(create_opts)?;
+
+    let ssl_opts = mqtt::SslOptionsBuilder::new()
+        .trust_store(trust_store)?
+        .key_store(key_store)?
+        .private_key(private_key)?
+        .finalize();
 
     // Initialize the consumer before connecting.
     let rx = cli.start_consuming();
 
     // Define the set of options for the connection.
     let lwt = mqtt::MessageBuilder::new()
-        .topic("test")
+        .topic("error")
         .payload("Consumer lost connection")
         .finalize();
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(20))
+        .ssl_options(ssl_opts)
         .clean_session(false)
         .will_message(lwt)
         .finalize();
 
+    println!("connecting to the broker");
+
     // Connect and wait for it to complete or fail.
-    if let Err(e) = cli.connect(conn_opts) {
-        println!("Unable to connect:\n\t{:?}", e);
-        process::exit(1);
-    }
+    cli.connect(conn_opts)?;
+
+    println!("subscribing to the topics");
 
     // Subscribe topics.
-    subscribe_topics(&cli);
+    cli.subscribe(TOPIC, QOS)?;
 
     println!("Processing requests...");
     for msg in rx.iter() {
@@ -79,7 +80,7 @@ fn main() {
         } else if !cli.is_connected() {
             if try_reconnect(&cli) {
                 println!("Resubscribe topics...");
-                subscribe_topics(&cli);
+                cli.subscribe(TOPIC, QOS)?;
             } else {
                 break;
             }
@@ -89,8 +90,10 @@ fn main() {
     // If still connected, then disconnect now.
     if cli.is_connected() {
         println!("Disconnecting");
-        cli.unsubscribe_many(DFLT_TOPICS).unwrap();
-        cli.disconnect(None).unwrap();
+        cli.unsubscribe(&client_id)?;
+        cli.disconnect(None)?;
     }
     println!("Exiting");
+
+    Ok(())
 }
