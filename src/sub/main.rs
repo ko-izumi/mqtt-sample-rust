@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::{env, process, thread, time::Duration};
 
 extern crate paho_mqtt as mqtt;
@@ -32,16 +33,15 @@ fn subscribe_topics(cli: &mqtt::Client) {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     dotenv().ok();
 
     let host = env::var("BROKER").unwrap_or_else(|_| DFLT_BROKER.to_string());
     let trust_store =
-        env::var("TRUST_STORE").unwrap_or_else(|_| "path/to/AmazonRootCA1.pem".to_string());
-    let key_store =
-        env::var("KEY_STORE").unwrap_or_else(|_| "path/to/your-private.pem.key".to_string());
+        env::var("TRUST_STORE").context("TRUST_STORE environment variable not found")?;
+    let key_store = env::var("KEY_STORE").context("KEY_STORE environment variable not found")?;
     let private_key =
-        env::var("PRIVATE_KEY").unwrap_or_else(|_| "path/to/your-certificate.pem.crt".to_string());
+        env::var("PRIVATE_KEY").context("PRIVATE_KEY environment variable not found")?;
     let client_id = env::var("CLIENT_ID").unwrap_or_else(|_| DFLT_CLIENT.to_string());
 
     println!("host: {}", host);
