@@ -54,7 +54,8 @@ fn main() -> Result<()> {
     for num in 0..5 {
         let content = "Hello world! ".to_string() + &num.to_string();
         let msg = mqtt::Message::new(client_id.clone(), content.clone(), QOS);
-        cli.publish(msg)?;
+        cli.publish(msg.clone())?;
+        println!("published message: {:?}", msg.to_string());
     }
 
     // Disconnect from the broker.
