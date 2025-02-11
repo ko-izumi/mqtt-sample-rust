@@ -2,6 +2,8 @@
 
 ## Environment Variables
 
+You need to set the following environment variables to run the client. `.env` file is required in the root directory.
+
 - `ENDPOINT`: MQTT broker endpoint
 - `TRUST_STORE`: Path to the trust store
 - `KEY_STORE`: Path to the key store
