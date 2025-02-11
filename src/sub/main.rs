@@ -77,7 +77,7 @@ fn main() -> Result<()> {
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
         .server_uri(host)
-        .client_id(DFLT_CLIENT.to_string())
+        .client_id(client_id)
         .finalize();
 
     // Create a client.
@@ -98,9 +98,9 @@ fn main() -> Result<()> {
         .will_message(lwt)
         .ssl_options(
             mqtt::SslOptionsBuilder::new()
-                .trust_store("path/to/AmazonRootCA1.pem")?
-                .key_store("path/to/your-private.pem.key")?
-                .private_key("path/to/your-certificate.pem.crt")?
+                .trust_store(trust_store)?
+                .key_store(key_store)?
+                .private_key(private_key)?
                 .finalize(),
         )
         .finalize();
