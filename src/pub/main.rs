@@ -33,8 +33,6 @@ fn main() -> Result<()> {
         .private_key(private_key)?
         .finalize();
 
-    println!("ssl_opts: {:?}", ssl_opts);
-
     // Define the set of options for the connection.
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(20))
