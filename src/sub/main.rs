@@ -5,6 +5,9 @@ extern crate paho_mqtt as mqtt;
 use anyhow::Result;
 use dotenv::dotenv;
 
+const QOS: i32 = 1;
+const TOPIC: &str = "common/topic";
+
 // Reconnect to the broker when connection is lost.
 fn try_reconnect(cli: &mqtt::Client) -> bool {
     println!("Connection lost. Waiting to retry connection");
@@ -22,7 +25,7 @@ fn try_reconnect(cli: &mqtt::Client) -> bool {
 fn main() -> Result<()> {
     dotenv().ok();
     let endpoint = env::var("ENDPOINT")?;
-    let client_id = env::var("CLIENT_ID")?;
+    let client_id = "client_id_1"; // should be unique
 
     let trust_store = env::var("TRUST_STORE")?;
     let key_store = env::var("KEY_STORE")?;
@@ -32,7 +35,7 @@ fn main() -> Result<()> {
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
         .server_uri(endpoint)
-        .client_id(client_id.clone())
+        .client_id(client_id)
         .finalize();
 
     // Create a client.
@@ -68,7 +71,7 @@ fn main() -> Result<()> {
     println!("subscribing to the topics");
 
     // Subscribe topics.
-    cli.subscribe(&client_id, 0)?;
+    cli.subscribe(TOPIC, QOS)?;
 
     println!("Processing requests...");
     for msg in rx.iter() {
@@ -77,7 +80,7 @@ fn main() -> Result<()> {
         } else if !cli.is_connected() {
             if try_reconnect(&cli) {
                 println!("Resubscribe topics...");
-                cli.subscribe(&client_id, 1)?;
+                cli.subscribe(TOPIC, QOS)?;
             } else {
                 break;
             }

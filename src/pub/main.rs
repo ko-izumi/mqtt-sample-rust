@@ -14,11 +14,12 @@ struct Payload {
 
 // Define the qos.
 const QOS: i32 = 1;
+const TOPIC: &str = "common/topic";
 
 fn main() -> Result<()> {
     dotenv().ok();
     let endpoint = env::var("ENDPOINT")?;
-    let client_id = env::var("CLIENT_ID")?;
+    let client_id = "client_id_2"; // should be unique
 
     let trust_store = env::var("TRUST_STORE")?;
     let key_store = env::var("KEY_STORE")?;
@@ -28,7 +29,7 @@ fn main() -> Result<()> {
     // Use an ID for a persistent session.
     let create_opts = mqtt::CreateOptionsBuilder::new()
         .server_uri(endpoint)
-        .client_id(client_id.clone())
+        .client_id(client_id)
         .finalize();
 
     // Create a client.
@@ -64,7 +65,7 @@ fn main() -> Result<()> {
 
         let payload_json = serde_json::to_string(&payload)?;
 
-        let msg = mqtt::Message::new(client_id.clone(), payload_json, QOS);
+        let msg = mqtt::Message::new(TOPIC, payload_json, QOS);
 
         cli.publish(msg.clone())?;
         println!("published message: {:?}", msg.to_string());
